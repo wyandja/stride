@@ -772,18 +772,33 @@ async function loadTracks(plId) {
 }
 
 // ──────────────────────────────────────────
-//  BPM (Audio Features)
+//  BPM (GetSongBPM API)
 // ──────────────────────────────────────────
+const GSBPM_KEY = '15a263f4f58861861a78f8b654724306';
+
+async function fetchBPMforTrack(track) {
+  if (bpmCache[track.id] !== undefined) return;
+  try {
+    const query = encodeURIComponent(track.artist + ' ' + track.name);
+    const r = await fetch('https://api.getsong.co/search/?api_key=' + GSBPM_KEY + '&type=both&lookup=' + query);
+    const d = await r.json();
+    const results = d.search || [];
+    if (results.length > 0 && results[0].tempo) {
+      bpmCache[track.id] = Math.round(parseFloat(results[0].tempo));
+    } else {
+      bpmCache[track.id] = null;
+    }
+  } catch(e) {
+    bpmCache[track.id] = null;
+  }
+}
+
 async function fetchBPMs(tracks) {
-  const needIds = [...new Set(tracks.filter(t => t.bpm === null && !bpmCache[t.id]).map(t => t.id))];
-  for (let i = 0; i < needIds.length; i += 100) {
-    const batch = needIds.slice(i, i+100);
-    try {
-      const d = await api(`/audio-features?ids=${batch.join(',')}`);
-      (d.audio_features || []).forEach(f => {
-        if (f) bpmCache[f.id] = Math.round(f.tempo);
-      });
-    } catch(e) {}
+  const needed = tracks.filter(t => t.bpm === null && bpmCache[t.id] === undefined);
+  for (let i = 0; i < needed.length; i += 5) {
+    const batch = needed.slice(i, i + 5);
+    await Promise.all(batch.map(t => fetchBPMforTrack(t)));
+    setStatus('Fetching BPMs... ' + Math.min(i+5, needed.length) + '/' + needed.length);
   }
   tracks.forEach(t => { if (bpmCache[t.id]) t.bpm = bpmCache[t.id]; });
 }
