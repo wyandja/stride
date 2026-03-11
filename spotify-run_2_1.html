@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RUN MODE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --green: #1DB954;
+    --dark: #0a0a0a;
+    --mid: #141414;
+    --card: #1a1a1a;
+    --text: #f0f0f0;
+    --muted: #666;
+    --red: #ff4444;
+    --orange: #ff8c00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCAN LINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 32px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 12vw, 96px);
+    letter-spacing: 6px;
+    color: var(--green);
+    text-shadow: 0 0 40px rgba(29,185,84,0.4);
+    line-height: 1;
+  }
+
+  .tagline {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  .setup-box {
+    background: var(--card);
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+  }
+
+  .setup-box label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .setup-box input {
+    width: 100%;
+    background: var(--dark);
+    border: 1px solid #333;
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .setup-box input:focus { border-color: var(--green); }
+
+  .hint {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .hint a { color: var(--green); text-decoration: none; }
+
+  .btn {
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    width: 100%;
+  }
+
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn.secondary {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  /* ── MAIN APP ── */
+  #app { display: none; padding: 20px; max-width: 900px; margin: 0 auto; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header .logo { font-size: 36px; }
+
+  .user-pill {
+    background: var(--card);
+    border: 1px solid #2a2a2a;
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── CONTROLS GRID ── */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media(max-width: 560px) { .controls { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 20px;
+  }
+
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* BPM Slider */
+  .bpm-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bpm-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--green);
+    min-width: 48px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .slider-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--green);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(29,185,84,0.5);
+  }
+
+  .range-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+  /* Heart Rate */
+  .hr-display {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .hr-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .hr-unit { font-size: 12px; color: var(--muted); }
+
+  .hr-zone {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+    display: inline-block;
+  }
+
+  .zone-rest    { background: #1a2a1a; color: #4a8; }
+  .zone-warmup  { background: #1a2020; color: #4aa; }
+  .zone-fat     { background: #1a1a2a; color: var(--green); }
+  .zone-cardio  { background: #2a1f10; color: var(--orange); }
+  .zone-peak    { background: #2a1010; color: var(--red); }
+
+  .hr-input-row { display: flex; gap: 8px; align-items: center; }
+
+  .hr-input-row input {
+    background: var(--dark);
+    border: 1px solid #333;
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    padding: 8px 10px;
+    width: 90px;
+    outline: none;
+    text-align: center;
+  }
+
+  .hr-input-row input:focus { border-color: var(--green); }
+
+  .hr-note { font-size: 10px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+  /* ── NOW PLAYING ── */
+  .now-playing {
+    background: var(--card);
+    border: 1px solid #222;
+    border-left: 3px solid var(--green);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 90px;
+  }
+
+  .np-art {
+    width: 60px; height: 60px;
+    border-radius: 3px;
+    background: #222;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+
+  .np-info { flex: 1; min-width: 0; }
+
+  .np-track {
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .np-artist { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .np-bpm {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--green);
+    flex-shrink: 0;
+  }
+
+  .np-bpm span { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); display: block; text-align: right; }
+
+  .empty-state {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* ── PLAYLIST LIST ── */
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .playlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .playlist-card {
+    background: var(--card);
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+
+  .playlist-card:hover { border-color: #444; background: #1f1f1f; }
+
+  .playlist-card.active {
+    border-color: var(--green);
+    background: rgba(29,185,84,0.05);
+  }
+
+  .playlist-card img {
+    width: 100%; aspect-ratio: 1; border-radius: 2px;
+    background: #222; object-fit: cover; margin-bottom: 10px;
+    display: block;
+  }
+
+  .playlist-name {
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .playlist-count { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  .check {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 18px; height: 18px;
+    background: var(--green);
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #000;
+  }
+
+  .playlist-card.active .check { display: flex; }
+
+  /* ── QUEUE ── */
+  .queue-list { display: flex; flex-direction: column; gap: 4px; }
+
+  .queue-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 3px;
+    background: var(--card);
+    border: 1px solid #1e1e1e;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  .queue-item:hover { background: #1f1f1f; }
+
+  .queue-item.playing {
+    border-color: var(--green);
+    background: rgba(29,185,84,0.04);
+  }
+
+  .q-art { width: 36px; height: 36px; border-radius: 2px; object-fit: cover; background: #222; flex-shrink: 0; }
+  .q-info { flex: 1; min-width: 0; }
+  .q-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q-artist { font-size: 11px; color: var(--muted); }
+  .q-bpm { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--green); }
+
+  .loading {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    padding: 40px;
+    letter-spacing: 2px;
+  }
+
+  .error-msg {
+    background: rgba(255,68,68,0.1);
+    border: 1px solid rgba(255,68,68,0.3);
+    border-radius: 3px;
+    padding: 12px;
+    font-size: 12px;
+    color: #ff8888;
+    margin-bottom: 16px;
+  }
+
+  .status-bar {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div>
+    <div class="logo">RUN MODE</div>
+    <div class="tagline">Spotify · BPM · Heart Rate</div>
+  </div>
+
+  <div class="setup-box">
+    <div>
+      <label>Your Spotify Client ID</label>
+      <input type="text" id="client-id-input" placeholder="e.g. a1b2c3d4e5f6..." />
+    </div>
+    <div class="hint">
+      1. Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a><br>
+      2. Create an app (any name)<br>
+      3. Add <code style="color:var(--green)">http://localhost</code> as Redirect URI — or whatever URL you opened this file from<br>
+      4. Copy your Client ID above
+    </div>
+    <button class="btn" onclick="startLogin()">CONNECT SPOTIFY</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="header">
+    <div class="logo">RUN MODE</div>
+    <div class="user-pill">
+      <div class="dot"></div>
+      <span id="user-name">...</span>
+    </div>
+  </div>
+
+  <div id="error-area"></div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <!-- BPM -->
+    <div class="panel">
+      <div class="panel-title">BPM Target Range</div>
+      <div class="bpm-range">
+        <div>
+          <div class="bpm-val" id="bpm-min-val">120</div>
+          <div class="range-label">MIN</div>
+        </div>
+        <div class="slider-col">
+          <input type="range" id="bpm-min" min="60" max="200" value="120" oninput="updateBPM()">
+          <input type="range" id="bpm-max" min="60" max="200" value="160" oninput="updateBPM()">
+        </div>
+        <div>
+          <div class="bpm-val" id="bpm-max-val">160</div>
+          <div class="range-label">MAX</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEART RATE -->
+    <div class="panel">
+      <div class="panel-title">Heart Rate Control</div>
+      <div class="hr-display">
+        <div class="hr-number" id="hr-display">—</div>
+        <div class="hr-unit">BPM</div>
+      </div>
+      <div class="hr-zone zone-rest" id="hr-zone">Enter HR below</div>
+      <div class="hr-input-row" style="margin-top:10px">
+        <input type="number" id="hr-input" min="40" max="220" placeholder="e.g. 155" oninput="updateHR()">
+        <button class="btn secondary" onclick="applyHRtoBPM()">SYNC TO MUSIC</button>
+      </div>
+      <div class="hr-note">Syncing maps your HR zone to a matching BPM range automatically.</div>
+    </div>
+  </div>
+
+  <!-- NOW PLAYING -->
+  <div class="panel-title">NOW PLAYING</div>
+  <div class="now-playing" id="now-playing">
+    <div class="empty-state">Select playlists below, then click a song to play it →</div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar" id="status-bar"></div>
+
+  <!-- PLAYLISTS -->
+  <div class="section-title">Your Playlists — click to include in queue</div>
+  <div class="playlist-grid" id="playlist-grid">
+    <div class="loading">LOADING PLAYLISTS...</div>
+  </div>
+
+  <!-- QUEUE -->
+  <div class="section-title" id="queue-title" style="display:none">BPM QUEUE</div>
+  <div class="queue-list" id="queue-list"></div>
+</div>
+
+<script>
+// ──────────────────────────────────────────
+//  AUTH
+// ──────────────────────────────────────────
+const SCOPES = 'user-read-private user-library-read playlist-read-private user-modify-playback-state user-read-playback-state';
+let clientId = '';
+let accessToken = '';
+let allTracks = []; // {id, name, artist, art, bpm, uri, playlistId}
+let selectedPlaylists = new Set();
+let queue = [];
+let currentTrack = null;
+let bpmCache = {}; // trackId -> bpm
+
+// ── PKCE helpers ──
+function base64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function sha256(plain) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain));
+}
+function randomString(len) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return base64url(arr);
+}
+
+async function startLogin() {
+  clientId = document.getElementById('client-id-input').value.trim();
+  if (!clientId) { alert('Paste your Client ID first!'); return; }
+  localStorage.setItem('sp_client_id', clientId);
+
+  const verifier = randomString(64);
+  const challenge = base64url(await sha256(verifier));
+  localStorage.setItem('sp_verifier', verifier);
+
+  const redirect = location.href.split('?')[0].split('#')[0];
+  localStorage.setItem('sp_redirect', redirect);
+
+  const url = new URL('https://accounts.spotify.com/authorize');
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('scope', SCOPES);
+  url.searchParams.set('redirect_uri', redirect);
+  url.searchParams.set('code_challenge_method', 'S256');
+  url.searchParams.set('code_challenge', challenge);
+  location.href = url.toString();
+}
+
+async function exchangeCode(code) {
+  const verifier  = localStorage.getItem('sp_verifier');
+  const redirect  = localStorage.getItem('sp_redirect');
+  const cid       = localStorage.getItem('sp_client_id');
+  const body = new URLSearchParams({
+    grant_type:    'authorization_code',
+    code,
+    redirect_uri:  redirect,
+    client_id:     cid,
+    code_verifier: verifier,
+  });
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  const d = await r.json();
+  if (d.access_token) {
+    accessToken = d.access_token;
+    const expiry = Date.now() + d.expires_in * 1000;
+    localStorage.setItem('sp_token', accessToken);
+    localStorage.setItem('sp_token_expiry', expiry);
+    if (d.refresh_token) localStorage.setItem('sp_refresh', d.refresh_token);
+  } else {
+    showError('Token exchange failed: ' + (d.error_description || JSON.stringify(d)));
+  }
+}
+
+async function refreshToken() {
+  const refresh = localStorage.getItem('sp_refresh');
+  const cid     = localStorage.getItem('sp_client_id');
+  if (!refresh || !cid) return false;
+  const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, client_id: cid });
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  const d = await r.json();
+  if (d.access_token) {
+    accessToken = d.access_token;
+    localStorage.setItem('sp_token', accessToken);
+    localStorage.setItem('sp_token_expiry', Date.now() + d.expires_in * 1000);
+    return true;
+  }
+  return false;
+}
+
+async function init() {
+  const savedId = localStorage.getItem('sp_client_id');
+  if (savedId) document.getElementById('client-id-input').value = savedId;
+
+  // Check for auth code callback
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  if (code) {
+    history.replaceState(null, '', location.pathname);
+    await exchangeCode(code);
+  } else {
+    // Try stored token
+    const stored  = localStorage.getItem('sp_token');
+    const expiry  = parseInt(localStorage.getItem('sp_token_expiry') || '0');
+    if (stored && Date.now() < expiry - 60000) {
+      accessToken = stored;
+    } else if (localStorage.getItem('sp_refresh')) {
+      await refreshToken();
+    }
+  }
+
+  if (accessToken) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    await loadUser();
+    await loadPlaylists();
+  }
+}
+
+// ──────────────────────────────────────────
+//  API HELPERS
+// ──────────────────────────────────────────
+async function api(path) {
+  const r = await fetch('https://api.spotify.com/v1' + path, {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  if (!r.ok) throw new Error(`API ${path} → ${r.status}`);
+  return r.json();
+}
+
+async function paginate(path) {
+  let results = [], url = 'https://api.spotify.com/v1' + path;
+  while (url) {
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (!r.ok) break;
+    const d = await r.json();
+    const items = d.items || [];
+    results = results.concat(items);
+    url = d.next;
+  }
+  return results;
+}
+
+// ──────────────────────────────────────────
+//  USER
+// ──────────────────────────────────────────
+async function loadUser() {
+  try {
+    const u = await api('/me');
+    document.getElementById('user-name').textContent = u.display_name || u.id;
+  } catch(e) { showError('Auth failed. Try reconnecting.'); }
+}
+
+// ──────────────────────────────────────────
+//  PLAYLISTS
+// ──────────────────────────────────────────
+async function loadPlaylists() {
+  const grid = document.getElementById('playlist-grid');
+  grid.innerHTML = '<div class="loading">LOADING PLAYLISTS...</div>';
+  try {
+    const items = await paginate('/me/playlists?limit=50');
+    const playlists = [
+      { id: '__liked__', name: 'Liked Songs', images: [], tracks: { total: '?' } },
+      ...items
+    ];
+    grid.innerHTML = '';
+    playlists.forEach(pl => {
+      const img = pl.images?.[0]?.url || '';
+      const card = document.createElement('div');
+      card.className = 'playlist-card';
+      card.dataset.id = pl.id;
+      card.innerHTML = `
+        <div class="check">✓</div>
+        ${img ? `<img src="${img}" alt="">` : `<div style="width:100%;aspect-ratio:1;background:#222;border-radius:2px;margin-bottom:10px"></div>`}
+        <div class="playlist-name">${pl.name}</div>
+        <div class="playlist-count">${pl.tracks?.total ?? '?'} tracks</div>
+      `;
+      card.onclick = () => togglePlaylist(card, pl);
+      grid.appendChild(card);
+    });
+  } catch(e) { grid.innerHTML = '<div class="loading">Failed to load playlists.</div>'; }
+}
+
+async function togglePlaylist(card, pl) {
+  if (selectedPlaylists.has(pl.id)) {
+    selectedPlaylists.delete(pl.id);
+    card.classList.remove('active');
+    allTracks = allTracks.filter(t => t.playlistId !== pl.id);
+  } else {
+    selectedPlaylists.add(pl.id);
+    card.classList.add('active');
+    setStatus('Loading tracks from "' + pl.name + '"...');
+    const tracks = await loadTracks(pl.id);
+    allTracks = allTracks.concat(tracks);
+    setStatus('');
+  }
+  rebuildQueue();
+}
+
+async function loadTracks(plId) {
+  let raw;
+  if (plId === '__liked__') {
+    raw = await paginate('/me/tracks?limit=50');
+  } else {
+    raw = await paginate(`/playlists/${plId}/tracks?limit=50`);
+  }
+  return raw
+    .map(item => item.track || item)
+    .filter(t => t && t.id)
+    .map(t => ({
+      id: t.id,
+      name: t.name,
+      artist: t.artists?.[0]?.name || '?',
+      art: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || '',
+      uri: t.uri,
+      bpm: null,
+      playlistId: plId
+    }));
+}
+
+// ──────────────────────────────────────────
+//  BPM (Audio Features)
+// ──────────────────────────────────────────
+async function fetchBPMs(tracks) {
+  const needIds = [...new Set(tracks.filter(t => t.bpm === null && !bpmCache[t.id]).map(t => t.id))];
+  for (let i = 0; i < needIds.length; i += 100) {
+    const batch = needIds.slice(i, i+100);
+    try {
+      const d = await api(`/audio-features?ids=${batch.join(',')}`);
+      (d.audio_features || []).forEach(f => {
+        if (f) bpmCache[f.id] = Math.round(f.tempo);
+      });
+    } catch(e) {}
+  }
+  tracks.forEach(t => { if (bpmCache[t.id]) t.bpm = bpmCache[t.id]; });
+}
+
+// ──────────────────────────────────────────
+//  QUEUE
+// ──────────────────────────────────────────
+async function rebuildQueue() {
+  if (allTracks.length === 0) {
+    document.getElementById('queue-title').style.display = 'none';
+    document.getElementById('queue-list').innerHTML = '';
+    return;
+  }
+  setStatus('Analyzing BPMs...');
+  await fetchBPMs(allTracks);
+  const min = parseInt(document.getElementById('bpm-min').value);
+  const max = parseInt(document.getElementById('bpm-max').value);
+  queue = allTracks.filter(t => t.bpm !== null && t.bpm >= min && t.bpm <= max);
+  renderQueue();
+  setStatus(`${queue.length} songs in range ${min}–${max} BPM`);
+}
+
+function renderQueue() {
+  const list = document.getElementById('queue-list');
+  const title = document.getElementById('queue-title');
+  if (queue.length === 0) {
+    list.innerHTML = '<div class="loading">No songs match this BPM range yet. Select a playlist!</div>';
+    title.style.display = 'block';
+    return;
+  }
+  title.style.display = 'block';
+  list.innerHTML = '';
+  queue.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 'queue-item' + (currentTrack?.id === t.id ? ' playing' : '');
+    el.innerHTML = `
+      ${t.art ? `<img class="q-art" src="${t.art}" alt="">` : `<div class="q-art"></div>`}
+      <div class="q-info">
+        <div class="q-name">${t.name}</div>
+        <div class="q-artist">${t.artist}</div>
+      </div>
+      <div class="q-bpm">${t.bpm}<br><span style="font-family:'DM Mono';font-size:9px;color:var(--muted)">BPM</span></div>
+    `;
+    el.onclick = () => playSong(t);
+    list.appendChild(el);
+  });
+}
+
+// ──────────────────────────────────────────
+//  PLAYBACK
+// ──────────────────────────────────────────
+async function playSong(track) {
+  currentTrack = track;
+  // Update Now Playing UI
+  const np = document.getElementById('now-playing');
+  np.innerHTML = `
+    ${track.art ? `<img class="np-art" src="${track.art}" alt="">` : `<div class="np-art"></div>`}
+    <div class="np-info">
+      <div class="np-track">${track.name}</div>
+      <div class="np-artist">${track.artist}</div>
+    </div>
+    <div class="np-bpm">${track.bpm}<span>BPM</span></div>
+  `;
+  renderQueue(); // refresh playing state
+
+  // Try to use Spotify playback API
+  try {
+    const devs = await api('/me/player/devices');
+    const dev = (devs.devices || []).find(d => d.is_active) || devs.devices?.[0];
+    if (dev) {
+      await fetch('https://api.spotify.com/v1/me/player/play' + (dev ? `?device_id=${dev.id}` : ''), {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uris: [track.uri] })
+      });
+      setStatus('▶ Playing on ' + dev.name);
+    } else {
+      setStatus('⚠ No active Spotify device found. Open Spotify on your phone/computer first, then click again.');
+    }
+  } catch(e) {
+    setStatus('⚠ Playback needs an active Spotify app open.');
+  }
+}
+
+// ──────────────────────────────────────────
+//  BPM SLIDERS
+// ──────────────────────────────────────────
+function updateBPM() {
+  let min = parseInt(document.getElementById('bpm-min').value);
+  let max = parseInt(document.getElementById('bpm-max').value);
+  if (min > max) { min = max; document.getElementById('bpm-min').value = min; }
+  document.getElementById('bpm-min-val').textContent = min;
+  document.getElementById('bpm-max-val').textContent = max;
+  rebuildQueue();
+}
+
+// ──────────────────────────────────────────
+//  HEART RATE
+// ──────────────────────────────────────────
+function updateHR() {
+  const hr = parseInt(document.getElementById('hr-input').value) || 0;
+  const el = document.getElementById('hr-display');
+  const zone = document.getElementById('hr-zone');
+  el.textContent = hr || '—';
+
+  if (!hr) { zone.textContent = 'Enter HR below'; zone.className = 'hr-zone zone-rest'; el.style.color = 'var(--text)'; return; }
+
+  if (hr < 100)      { zone.textContent = 'RESTING'; zone.className = 'hr-zone zone-rest'; el.style.color = '#4a8'; }
+  else if (hr < 120) { zone.textContent = 'WARM UP'; zone.className = 'hr-zone zone-warmup'; el.style.color = '#4aa'; }
+  else if (hr < 140) { zone.textContent = 'FAT BURN'; zone.className = 'hr-zone zone-fat'; el.style.color = 'var(--green)'; }
+  else if (hr < 165) { zone.textContent = 'CARDIO'; zone.className = 'hr-zone zone-cardio'; el.style.color = 'var(--orange)'; }
+  else               { zone.textContent = 'PEAK'; zone.className = 'hr-zone zone-peak'; el.style.color = 'var(--red)'; }
+}
+
+function applyHRtoBPM() {
+  const hr = parseInt(document.getElementById('hr-input').value) || 0;
+  if (!hr) { alert('Enter your heart rate first!'); return; }
+  
+  // Map HR zones to BPM ranges that feel right for running
+  let min, max;
+  if (hr < 100)      { min = 100; max = 120; }
+  else if (hr < 120) { min = 110; max = 130; }
+  else if (hr < 140) { min = 120; max = 145; }
+  else if (hr < 165) { min = 140; max = 170; }
+  else               { min = 160; max = 200; }
+
+  document.getElementById('bpm-min').value = min;
+  document.getElementById('bpm-max').value = max;
+  document.getElementById('bpm-min-val').textContent = min;
+  document.getElementById('bpm-max-val').textContent = max;
+  rebuildQueue();
+}
+
+// ──────────────────────────────────────────
+//  UTILS
+// ──────────────────────────────────────────
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
+
+function showError(msg) {
+  document.getElementById('error-area').innerHTML = `<div class="error-msg">${msg}</div>`;
+}
+
+// ──────────────────────────────────────────
+init();
+</script>
+<div style="text-align:center;padding:24px;font-size:11px;color:#444;">
+  BPM data powered by <a href="https://getsongbpm.com" style="color:#555;text-decoration:underline;">GetSongBPM</a>
+</div>
+</body>
+</html>
