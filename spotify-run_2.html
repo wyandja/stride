@@ -780,7 +780,7 @@ async function fetchBPMforTrack(track) {
   if (bpmCache[track.id] !== undefined) return;
   try {
     const query = encodeURIComponent(track.artist + ' ' + track.name);
-    const r = await fetch('https://api.getsong.co/search/?api_key=' + GSBPM_KEY + '&type=both&lookup=' + query);
+    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://api.getsong.co/search/?api_key=' + GSBPM_KEY + '&type=both&lookup=' + query));
     const d = await r.json();
     const results = d.search || [];
     if (results.length > 0 && results[0].tempo) {
